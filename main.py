@@ -1,16 +1,27 @@
-def analyse_data():
+import analyse_data
+import preparation_donnees
+import recherche_correlation
+import comparaison_classifieurs
+
+def run_analyse(file):
     print("\n=== Analyse des données ===")
-    exec(open("analyse_data.py", encoding="utf-8").read())
+    analyse_data.main(file)
 
-def preparation_donnees():
+def run_preparation(file):
     print("\n=== Préparation des données ===")
-    exec(open("preparation_donnees.py", encoding="utf-8").read())
+    return preparation_donnees.main(file)
 
-def recherche_correlation():
+def run_correlation(file):
     print("\n=== Recherche de corrélations ===")
-    exec(open("recherche_correlation.py", encoding="utf-8").read())
+    recherche_correlation.main(file)
+
+def run_comparaison(file):
+    print("\n=== Comparaison des classifieurs ===")
+    comparaison_classifieurs.main(file)
 
 if __name__ == "__main__":
-    analyse_data()
-    preparation_donnees()
-    recherche_correlation()
+    file = input("Entrez le nom du fichier CSV à analyser (ex: car_insurance.csv) : ")
+    run_analyse(file)
+    file_prepared=run_preparation(file)
+    run_correlation(file_prepared)
+    run_comparaison(file_prepared)
