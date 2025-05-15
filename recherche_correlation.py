@@ -45,17 +45,33 @@ seuil = 0.3
 corr_cible = corr_matrix["outcome"].abs()
 print(corr_cible[corr_cible > seuil])
 
-# Sélection des variables les plus corrélées avec la cible
-top_corr = corr_matrix["outcome"].abs().sort_values(ascending=False)[1:4]  # 3 plus corrélées hors outcome
-print("\nVariables les plus corrélées avec la cible :", list(top_corr.index))
+# Sélection des variables les plus corrélées avec la cible (corrélation > 0.3 ou < -0.3)
+seuil = 0.3
+corr_cible = corr_matrix["outcome"].abs()
+top_corr_vars = corr_cible[corr_cible > seuil].index.tolist()
+top_corr_vars = [var for var in top_corr_vars if var != "outcome"]  # On enlève outcome si présent
 
-# Visualisation scatter matrix améliorée
-vars_to_plot = list(top_corr.index) + ["outcome"]
-cmap = ListedColormap(sns.color_palette("Set1", n_colors=2).as_hex())  # Palette pour la variable cible
+print(f"\nVariables les plus corrélées avec la cible (|corr| > {seuil}): {top_corr_vars}")
+
+# Visualisation scatter matrix pour ces variables + outcome
+vars_to_plot = top_corr_vars + ["outcome"]
+cmap = ListedColormap(sns.color_palette("Set1", n_colors=2).as_hex())
 scatter_matrix(df_scaled[vars_to_plot], figsize=(10, 8), diagonal='hist', alpha=0.8,
                c=df_scaled["outcome"], cmap=cmap, marker='o', hist_kwds={'bins': 20})
-plt.suptitle("Scatter matrix des variables les plus corrélées avec la cible (améliorée)", fontsize=16)
+plt.suptitle("Scatter matrix des variables les plus corrélées avec la cible (+ outcome)", fontsize=16)
 plt.show()
+
+# # Sélection des variables les plus corrélées avec la cible
+# top_corr = corr_matrix["outcome"].abs().sort_values(ascending=False)[1:4]  # 3 plus corrélées hors outcome
+# print("\nVariables les plus corrélées avec la cible :", list(top_corr.index))
+
+# # Visualisation scatter matrix améliorée
+# vars_to_plot = list(top_corr.index) + ["outcome"]
+# cmap = ListedColormap(sns.color_palette("Set1", n_colors=2).as_hex())  # Palette pour la variable cible
+# scatter_matrix(df_scaled[vars_to_plot], figsize=(10, 8), diagonal='hist', alpha=0.8,
+#                c=df_scaled["outcome"], cmap=cmap, marker='o', hist_kwds={'bins': 20})
+# plt.suptitle("Scatter matrix des variables les plus corrélées avec la cible (améliorée)", fontsize=16)
+# plt.show()
 
 # # Boxplot pour les variables les plus corrélées
 # for var in top_corr.index:
