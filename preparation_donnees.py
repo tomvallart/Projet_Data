@@ -1,65 +1,89 @@
 import pandas as pd
+import numpy as np
+from sklearn.preprocessing import LabelEncoder, StandardScaler
 
-# Chargement des données
-df = pd.read_csv("car_insurance.csv")
+def load_data(filepath):
+    """Charge les données depuis un fichier CSV"""
+    return pd.read_csv(filepath)
 
-# Suppression des colonnes inutiles
-df.drop(columns=["id", "postal_code"], inplace=True)
+def check_missing_values(df):
+    """Vérifie et affiche les valeurs manquantes pour chaque variable"""
+    print("\n--- Nombre de valeurs manquantes par variable ---")
+    print(df.isna().sum())
+    return df
 
-# Correction des valeurs aberrantes dans 'children'
-df.loc[df["children"] > 10, "children"] = df.loc[df["children"] <= 10, "children"].median()
+def handle_missing_values(df):
+    """Gère les valeurs manquantes selon les critères du projet"""
+    for column in df.columns:
+        missing_count = df[column].isna().sum()
+        if missing_count > 0:
+            missing_percentage = (missing_count / len(df)) * 100
+            if missing_percentage > 33:
+                df = df.drop(columns=[column])
+                print(f"Colonne {column} supprimée : {missing_percentage:.2f}% de valeurs manquantes")
+            else:
+                if df[column].dtype == 'object':
+                    most_frequent = df[column].mode()[0]
+                    df[column] = df[column].fillna(most_frequent)
+                else:
+                    median_value = df[column].median()
+                    df[column] = df[column].fillna(median_value)
+    return df
 
-# Gestion des valeurs aberrantes dans 'speeding_violations' (exclusion des valeurs extrêmes aberrantes)
-df = df[df["speeding_violations"] < 1000]
+def remove_useless_columns(df):
+    """Supprime les colonnes non utiles pour la classification"""
+    columns_to_drop = ["id", "postal_code"]
+    df = df.drop(columns=columns_to_drop)
+    return df
 
-# Encodage de 'driving_experience'
-driving_map = {
-    "0-9y": 0,
-    "10-19y": 1,
-    "20-29y": 2,
-    "30y+": 3
-}
-df["driving_experience"] = df["driving_experience"].map(driving_map)
+def handle_outliers(df):
+    """Traite les valeurs aberrantes identifiées dans les données"""
+    # Pour children : valeurs > 10 remplacées par la médiane, puis arrondi à l'entier
+    median_children = df.loc[df["children"] <= 10, "children"].median()
+    df.loc[df["children"] > 10, "children"] = median_children
+    df["children"] = np.round(df["children"]).astype(int)
 
-# Encodage de 'education'
-education_map = {
-    "none": 0,
-    "high school": 1,
-    "university": 2
-}
-df["education"] = df["education"].map(education_map)
+    # Pour speeding_violations : valeurs > 30 supprimées, puis arrondi à l'entier
+    df = df[df["speeding_violations"] <= 30]
+    df["speeding_violations"] = np.round(df["speeding_violations"]).astype(int)
 
-# Encodage de 'income'
-income_map = {
-    "poverty": 0,
-    "working class": 1,
-    "middle class": 2,
-    "upper class": 3
-}
-df["income"] = df["income"].map(income_map)
+    # Pour credit_score : doit être >=0 et <1, sinon ramener dans l'intervalle
+    df["credit_score"] = df["credit_score"].clip(lower=0, upper=0.999999)
+    
+    return df
 
-# Transformation de 'vehicle_year' → 'after_2015'
-df["after_2015"] = df["vehicle_year"].apply(lambda x: 1 if x == "after 2015" else 0)
-df.drop(columns=["vehicle_year"], inplace=True)
+def encode_categorical_variables(df):
+    """Encode les variables catégorielles en utilisant LabelEncoder"""
+    le = LabelEncoder()
+    categorical_columns = df.select_dtypes(include=['object']).columns
+    for column in categorical_columns:
+        df[column] = le.fit_transform(df[column])
+    return df
 
-# Transformation de 'vehicle_type' → 'sedan_type'
-df["sedan_type"] = df["vehicle_type"].apply(lambda x: 1 if x == "sedan" else 0)
-df.drop(columns=["vehicle_type"], inplace=True)
+def normalize_features(df):
+    """Normalise les features numériques avec StandardScaler"""
+    scaler = StandardScaler()
+    target = df['outcome']
+    features = df.drop(columns=['outcome'])
+    features_normalized = scaler.fit_transform(features)
+    df_normalized = pd.DataFrame(features_normalized, columns=features.columns)
+    df_normalized['outcome'] = target.values
+    return df_normalized
 
-# Imputation des valeurs manquantes par la médiane ou mode selon le type de variable
-for col in df.columns:
-    if df[col].isnull().sum() > 0:
-        if df[col].dtype == 'object':
-            df[col].fillna(df[col].mode()[0], inplace=True)
-        else:
-            df[col].fillna(df[col].median(), inplace=True)
+def main():
+    df = load_data("car_insurance.csv")
+    df = check_missing_values(df)
+    df = remove_useless_columns(df)
+    df = handle_missing_values(df)
+    df = handle_outliers(df)
+    df = encode_categorical_variables(df)
+    df = normalize_features(df)
+    print("\n--- Aperçu des données préparées ---")
+    print(df.head())
+    print("\n--- Vérification finale des valeurs manquantes ---")
+    print(df.isna().sum())
+    df.to_csv("car_insurance_prepared.csv", index=False)
+    print("\nDonnées préparées sauvegardées dans 'car_insurance_prepared.csv'")
 
-# Vérification
-print("\n--- Valeurs manquantes après traitement ---")
-print(df.isnull().sum())
-
-print("\n--- Aperçu des données prêtes à l'emploi ---")
-print(df.head())
-
-# (optionnel) Sauvegarde du jeu de données prêt pour modélisation
-df.to_csv("car_insurance_prepared.csv", index=False)
+if __name__ == "__main__":
+    main()

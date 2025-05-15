@@ -57,9 +57,9 @@ scatter_matrix(df_scaled[vars_to_plot], figsize=(10, 8), diagonal='hist', alpha=
 plt.suptitle("Scatter matrix des variables les plus corrélées avec la cible (améliorée)", fontsize=16)
 plt.show()
 
-# Boxplot pour les variables les plus corrélées
-for var in top_corr.index:
-    plt.figure(figsize=(6, 4))
-    sns.boxplot(x="outcome", y=var, data=df_scaled, palette="Set2")
-    plt.title(f"Boxplot de {var} en fonction de la cible")
-    plt.show()
+# # Boxplot pour les variables les plus corrélées
+# for var in top_corr.index:
+#     plt.figure(figsize=(6, 4))
+#     sns.boxplot(x="outcome", y=var, data=df_scaled, palette="Set2")
+#     plt.title(f"Boxplot de {var} en fonction de la cible")
+#     plt.show()
