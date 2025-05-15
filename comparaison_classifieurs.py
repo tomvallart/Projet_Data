@@ -1,43 +1,57 @@
-import numpy as np
-from sklearn.linear_model import LogisticRegression, Perceptron
-from sklearn.neighbors import KNeighborsClassifier
 import matplotlib.pyplot as plt
 from validation_croisee import validation_croisee_modele
+from modeles import get_modele
+from extraction_jeux import pipeline_extraction_jeux
 
-# Chargement du jeu d'entraînement préparé par extraction_jeux.py
-X = np.load("X_train.npy")
-y = np.load("y_train.npy")
+# Extraction des jeux de données et des features
+X_train, X_test, y_train, y_test, top_features = pipeline_extraction_jeux(afficher=False)
 
-# Définition des classifieurs à comparer
 classifieurs = {
-    "Régression logistique": LogisticRegression(),
-    "Perceptron": Perceptron(),
-    "K plus proches voisins (K=5)": KNeighborsClassifier(n_neighbors=5)
+    "Régression logistique": get_modele("logistic"),
+    "Perceptron": get_modele("perceptron"),
+    "K plus proches voisins (K=5)": get_modele("knn", n_neighbors=5)
 }
 
 k = 25  # nombre de folds pour la validation croisée
 
-moyennes = []
-ecarts = []
+moyennes_cv = []
+ecarts_cv = []
+scores_test = []
 noms = []
 
-print(f"Comparaison des classifieurs avec validation croisée ({k} folds) :\n")
+print(f"Comparaison des classifieurs : score test vs validation croisée ({k} folds) :\n")
 for nom, clf in classifieurs.items():
-    scores = validation_croisee_modele(clf, X, y, k=k)
+    # Validation croisée
+    scores = validation_croisee_modele(clf, X_train, y_train, k=k)
+    # Score sur le jeu de test classique
+    clf.fit(X_train, y_train)
+    score_test = clf.score(X_test, y_test)
     print(f"{nom} :")
-    print(f"  Scores : {np.round(scores, 3)}")
-    print(f"  Moyenne : {scores.mean():.3f} | Écart-type : {scores.std():.3f}\n")
-    moyennes.append(scores.mean())
-    ecarts.append(scores.std())
+    print(f"  Score test : {score_test:.3f}")
+    print(f"  Moyenne CV : {scores.mean():.3f} | Écart-type CV : {scores.std():.3f}\n")
+    moyennes_cv.append(scores.mean())
+    ecarts_cv.append(scores.std())
+    scores_test.append(score_test)
     noms.append(nom)
 
-# Affichage graphique des scores moyens avec barres d'erreur (écart-type)
-plt.figure(figsize=(8, 5))
-bars = plt.bar(noms, moyennes, yerr=ecarts, capsize=10, color=['royalblue', 'orange', 'green'])
-plt.ylabel("Score moyen (accuracy)")
-plt.title("Comparaison des classifieurs (validation croisée)")
+# Affichage graphique : barres groupées
+import numpy as np
+x = np.arange(len(noms))
+width = 0.35
+
+plt.figure(figsize=(10, 6))
+bars1 = plt.bar(x - width/2, scores_test, width, label='Score test', color='royalblue')
+bars2 = plt.bar(x + width/2, moyennes_cv, width, yerr=ecarts_cv, capsize=8, label='Validation croisée', color='orange')
+
+for bar, val in zip(bars1, scores_test):
+    plt.text(bar.get_x() + bar.get_width()/2, val + 0.01, f"{val:.3f}", ha='center', fontsize=11)
+for bar, val in zip(bars2, moyennes_cv):
+    plt.text(bar.get_x() + bar.get_width()/2, val + 0.01, f"{val:.3f}", ha='center', fontsize=11)
+
+plt.ylabel("Accuracy")
+plt.title("Comparaison des classifieurs : test vs validation croisée")
 plt.ylim(0, 1)
-for bar, moyenne in zip(bars, moyennes):
-    plt.text(bar.get_x() + bar.get_width()/2, moyenne + 0.02, f"{moyenne:.3f}", ha='center', fontsize=11)
+plt.xticks(x, noms)
+plt.legend()
 plt.tight_layout()
 plt.show()

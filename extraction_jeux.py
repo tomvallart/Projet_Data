@@ -3,39 +3,54 @@ from sklearn.model_selection import train_test_split
 import numpy as np
 import matplotlib.pyplot as plt
 
-# Chargement du jeu de données préparé
-df = pd.read_csv("car_insurance_prepared.csv")
+def charger_dataframe(filepath="car_insurance_prepared.csv"):
+    """Charge le DataFrame préparé"""
+    return pd.read_csv(filepath)
 
-# Calcul des corrélations avec la variable cible
-correlations = df.corr(numeric_only=True)["outcome"].abs().sort_values(ascending=False)
-top_features = correlations.index[1:4]  # 3 variables les plus corrélées
+def extraire_top_features(df, n=3):
+    """Retourne les n variables les plus corrélées avec la cible"""
+    correlations = df.corr(numeric_only=True)["outcome"].abs().sort_values(ascending=False)
+    top_features = correlations.index[1:n+1]  # On saute 'outcome' lui-même
+    return list(top_features)
 
-# Utilise uniquement ces variables comme variables explicatives
-X = df[top_features]
-y = df["outcome"]
+def creer_jeux(X, y, test_size=0.2, random_state=42):
+    """Sépare en jeux d'apprentissage et de test et sauvegarde en .npy"""
+    X_train, X_test, y_train, y_test = train_test_split(
+        X.values, y.values, test_size=test_size, random_state=random_state
+    )
+    np.save("X_train.npy", X_train)
+    np.save("X_test.npy", X_test)
+    np.save("y_train.npy", y_train)
+    np.save("y_test.npy", y_test)
+    return X_train, X_test, y_train, y_test
 
-# Séparation en jeu d'apprentissage (80%) et jeu de test (20%)
-X_train, X_test, y_train, y_test = train_test_split(
-    X.values, y.values, test_size=0.2, random_state=42
-)
+def afficher_proportions(X_train, X_test, df):
+    """Affiche la taille des jeux d'apprentissage et de test"""
+    print(f"Taille du jeu d'apprentissage : {X_train.shape[0]} lignes ({X_train.shape[0]/df.shape[0]:.2%})")
+    print(f"Taille du jeu de test : {X_test.shape[0]} lignes ({X_test.shape[0]/df.shape[0]:.2%})")
 
-# Sauvegarde des jeux sous forme de fichiers numpy
-np.save("X_train.npy", X_train)
-np.save("X_test.npy", X_test)
-np.save("y_train.npy", y_train)
-np.save("y_test.npy", y_test)
+def afficher_histogrammes(X_train, top_features):
+    """Affiche les histogrammes des variables explicatives sur le jeu d'apprentissage"""
+    plt.figure(figsize=(10, 6))
+    for i, feature in enumerate(top_features):
+        plt.hist(X_train[:, i], bins=20, alpha=0.5, label=feature)
+    plt.title("Distribution des 3 variables explicatives les plus corrélées (jeu d'apprentissage)")
+    plt.xlabel("Valeur")
+    plt.ylabel("Nombre d'occurrences")
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
 
-# Affichage des proportions
-print(f"Taille du jeu d'apprentissage : {X_train.shape[0]} lignes ({X_train.shape[0]/df.shape[0]:.2%})")
-print(f"Taille du jeu de test : {X_test.shape[0]} lignes ({X_test.shape[0]/df.shape[0]:.2%})")
+def pipeline_extraction_jeux(filepath="car_insurance_prepared.csv", n_features=3, test_size=0.2, random_state=42, afficher=True):
+    df = charger_dataframe(filepath)
+    top_features = extraire_top_features(df, n=n_features)
+    X = df[top_features]
+    y = df["outcome"]
+    X_train, X_test, y_train, y_test = creer_jeux(X, y, test_size=test_size, random_state=random_state)
+    if afficher:
+        afficher_proportions(X_train, X_test, df)
+        afficher_histogrammes(X_train, top_features)
+    return X_train, X_test, y_train, y_test, top_features
 
-# Affichage graphique : histogrammes des 3 variables explicatives sur le jeu d'apprentissage
-plt.figure(figsize=(10, 6))
-for i, feature in enumerate(top_features):
-    plt.hist(X_train[:, i], bins=20, alpha=0.5, label=feature)
-plt.title("Distribution des 3 variables explicatives les plus corrélées (jeu d'apprentissage)")
-plt.xlabel("Valeur")
-plt.ylabel("Nombre d'occurrences")
-plt.legend()
-plt.tight_layout()
-plt.show()
+if __name__ == "__main__":
+    pipeline_extraction_jeux()
